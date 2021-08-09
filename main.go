@@ -1,12 +1,12 @@
 package main
 
-//검사 최종 결과 보완 (Error 허용 개수 지정, Pass 조건 일치율)
 //결과 남길 양식 및 폴더 트리 정하기 및 구현
 //Line 받아오는 구조 구현 (Client)
 
-//Log가 남는 PC에서 실행할 Line 보내주는 프로그램 구현(Server)
+//[x] Log가 남는 PC에서 실행할 Line 보내주는 프로그램 구현(Server)
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -14,31 +14,62 @@ import (
 	"github.com/ghodss/yaml"
 )
 
+var VERSION = "dev"
+var BUILD = "dev"
+
 func main() {
-	tests = readConfig("./config/")
+
+	//getOption
+	version := flag.Bool("version", false, "check version")
+	rootPath := flag.String("root", "./", "root path")
+	configFile := flag.String("config", "config.yaml", "config file")
+	//시작시간을 지정해준다. (지정안하면 실행한 시간부터)
+	flag.Parse()
+
+	//check version
+	if *version {
+		fmt.Println("The version is", VERSION)
+		fmt.Println("The Build date is", BUILD)
+		return
+	}
+
+	//ReadFile
+	yamlFile, err := ioutil.ReadFile(*rootPath + *configFile)
+	if err != nil {
+		panic(err)
+	}
+
+	var config config
+	err = yaml.Unmarshal(yamlFile, &config)
+
+	if err != nil {
+		panic(err)
+	}
+
+	test1 = config.toTest()
 
 	//CSV 파일 읽어서 하는 걸로  && 통신으로 받는 걸로 변경하면 좋음
-	array := []format{
+	array := []logInfo{
 		decodeCSV("{time},operation,start-sw,on"),
 		decodeCSV("{time},event,init"),
 		decodeCSV("{time},operation,start-sw,off"),
 	}
 
 	for i := range array {
-		onUpdate(array[i])
+		test1.valid(array[i])
 	}
 
-	fmt.Printf("end")
+	test1.toReport(*rootPath)
 }
 
-func decodeCSV(msg string) format {
+func decodeCSV(msg string) logInfo {
 	s := strings.Split(msg, ",")
-	return format{s[0], s[1], s[2:]}
-}
-
-func onUpdate(info format) {
-	for i := range tests {
-		tests[i].valid(info)
+	return logInfo{
+		unixDate:       s[0],
+		utcNanoseconds: 0,
+		index:          0,
+		kind:           s[1],
+		elements:       s[2:],
 	}
 }
 
@@ -68,7 +99,6 @@ func readConfig(path string) []test {
 }
 
 type config struct {
-	Name  string        `json:"Name"`
 	Items []config_item `json:"Items"`
 }
 
@@ -112,8 +142,7 @@ func (c *config_wer) toItem() test_Item_wer {
 
 func (c *config) toTest() test {
 	var test test
-	test.last = map[string]format{}
-	test.config.name = c.Name
+	test.last = map[string]logInfo{}
 	for i := range c.Items {
 		var item testItem
 		item.resultType = c.Items[i].Type
@@ -132,14 +161,16 @@ func (c *config) toTest() test {
 	return test
 }
 
-type format struct {
-	time     string
-	kind     string
-	elements []string
+type logInfo struct {
+	unixDate       string
+	utcNanoseconds int64
+	index          uint32
+	kind           string
+	elements       []string
 }
 
-func (f *format) valid() bool {
-	if f.time == "" {
+func (f *logInfo) valid() bool {
+	if f.unixDate == "" {
 		return false
 	}
 	if f.kind == "" {
@@ -156,7 +187,7 @@ func (f *format) valid() bool {
 	return true
 }
 
-func (format *format) compare(info format) bool {
+func (format *logInfo) compare(info logInfo) bool {
 	if format.valid() == false {
 		return false
 	}
@@ -175,18 +206,42 @@ func (format *format) compare(info format) bool {
 }
 
 type test struct {
-	config test_config
-	result test_result
-	last   map[string]format
+	config   test_config
+	result   test_result
+	report   string
+	reports  []string
+	historys []string
+	last     map[string]logInfo
 }
+
+//
+// DateTime: 2021-07-29 02:10:41 +0900 KST #Unix Date Time Format
+// _detail-path:
+//   - "./SinarioName-{id}/TestName/report-testName-{id}.yaml"
+//   - "./SinarioName-{id}/TestName/report-testName-{id}.yaml"
+
+// report-testName-{id}.yaml
+// Name: testName
+// Id: "e22ghex"
+// CheckerVersion: V1 #필요에 따라 여러종류의 Checker가 실행될 수 있음
+// DateTime: 2021-07-29 02:10:41 +0900 KST #Unix Date Time Format
+// Done: true
+// _detail:
+//   -
+//     id: "28bac"
+//     Type: Error
+//     Message: abdcdd
+//     filePath: "./SinarioName-{id}/TestName/report-검사방식이름/history-{id}.yaml"
+// Error: [] #없으면 생략
+// Warning: [""] #없으면 생략
+// Message: ["",""] #없으면 생략
 type test_config struct {
-	name  string
 	items []testItem
 }
 type test_result struct {
-	error_m []string
-	warning []string
-	message []string
+	Error_m []string
+	Warning []string
+	Message []string
 }
 
 type testItem struct {
@@ -206,27 +261,27 @@ type test_Item_wer struct {
 	And   []test_Item_wer
 	Or    []test_Item_wer
 	Not   []test_Item_wer
-	Value format
+	Value logInfo
 }
 
-var tests []test
+var test1 test
 
-func (test *test) valid(info format) {
+func (test *test) valid(info logInfo) {
 	//상태 가 일치 (또는 무상관) & 현 Log가 일치
 	for _, t := range test.config.items {
 		if t.valid(test.last, info) {
 			switch t.resultType {
 			case "error":
-				test.result.error_m = append(test.result.error_m, t.message)
+				test.result.Error_m = append(test.result.Error_m, t.message)
 				break
 			case "warning":
-				test.result.warning = append(test.result.warning, t.message)
+				test.result.Warning = append(test.result.Warning, t.message)
 				break
 			case "message":
-				test.result.message = append(test.result.message, t.message)
+				test.result.Message = append(test.result.Message, t.message)
 				break
 			default:
-				test.result.error_m = append(test.result.error_m, t.message)
+				test.result.Error_m = append(test.result.Error_m, t.message)
 				break
 			}
 		}
@@ -234,11 +289,43 @@ func (test *test) valid(info format) {
 	}
 }
 
-func (item *testItem) valid(last map[string]format, info format) bool {
+func (test *test) toReport(rootPath string) {
+	// rootPath
+	// ├── config.yaml
+	// ├── report.yaml
+	// ├── report-testName-{id}.yaml
+	// ├── report-testName-{id}
+	// │   ├── history-{id}.yaml
+	// │   ├── history-{id}.yaml
+	// │   ├── history-{id}.yaml
+	// │   ├── history-{id}.yaml
+	// ├── report-testName-{id}.yaml
+	// ├── report-testName-{id}
+	// │   ├── history-{id}.yaml
+	// │   ├── history-{id}.yaml
+	// │   ├── history-{id}.yaml
+	// │   ├── history-{id}.yaml
+	saveYamlFile(rootPath+"report.yaml", test.result)
+	// saveYamlFile(rootPath+"Report-testName-{id}.yaml", test.result)
+}
+
+func saveYamlFile(filePath string, o interface{}) {
+	b, err := yaml.Marshal(o)
+	if err != nil {
+		return
+	}
+
+	err = ioutil.WriteFile(filePath, b, 0644)
+	if err != nil {
+		return
+	}
+}
+
+func (item *testItem) valid(last map[string]logInfo, info logInfo) bool {
 	return status_va1111(info, item.oders[0].formats) && status_va2222(last, item.oders[0].status_tests)
 }
 
-func status_va1111(info format, formats test_Item_wer) bool {
+func status_va1111(info logInfo, formats test_Item_wer) bool {
 	if len(formats.And) != 0 {
 		for i := range formats.And {
 			if status_va1111(info, formats.And[i]) == false {
@@ -269,7 +356,7 @@ func status_va1111(info format, formats test_Item_wer) bool {
 	}
 }
 
-func status_va2222(last map[string]format, formats test_Item_wer) bool {
+func status_va2222(last map[string]logInfo, formats test_Item_wer) bool {
 	if len(formats.And) != 0 {
 		for i := range formats.And {
 			if status_va2222(last, formats.And[i]) == false {
