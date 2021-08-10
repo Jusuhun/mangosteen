@@ -3,7 +3,6 @@ package testa
 import (
 	"io/ioutil"
 	"mangosteena/pkg/info"
-	"strings"
 
 	"github.com/ghodss/yaml"
 )
@@ -22,30 +21,6 @@ func ReadFile(path string) Test {
 	}
 
 	return config.toTest()
-}
-
-func readConfig(path string) []Test {
-	var result []Test
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		return result
-	}
-	for _, file := range files {
-		if strings.Contains(file.Name(), ".yml") || strings.Contains(file.Name(), ".yaml") {
-			yamlFile, err := ioutil.ReadFile(path + file.Name())
-
-			var config config
-			err = yaml.Unmarshal(yamlFile, &config)
-
-			if err != nil {
-				panic(err)
-			}
-
-			result = append(result, config.toTest())
-		}
-	}
-
-	return result
 }
 
 type config struct {

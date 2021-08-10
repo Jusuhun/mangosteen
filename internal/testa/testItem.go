@@ -51,27 +51,27 @@ func (method *Method) addHistory(last map[string]info.LogInfo, info info.LogInfo
 func compareAction(info info.LogInfo, cond Conditional) bool {
 	if len(cond.And) != 0 {
 		for i := range cond.And {
-			if compareAction(info, cond.And[i]) == false {
+			if !compareAction(info, cond.And[i]) {
 				return false
 			}
 		}
 		return true
 	} else if len(cond.Or) != 0 {
 		for i := range cond.Or {
-			if compareAction(info, cond.Or[i]) == true {
+			if compareAction(info, cond.Or[i]) {
 				return true
 			}
 		}
 		return false
 	} else if len(cond.Not) != 0 {
 		for i := range cond.Not {
-			if compareAction(info, cond.Not[i]) == true {
+			if compareAction(info, cond.Not[i]) {
 				return false
 			}
 		}
 		return true
 	} else {
-		if cond.Value.Valid() == false {
+		if !cond.Value.Valid() {
 			return false
 		}
 
@@ -82,27 +82,27 @@ func compareAction(info info.LogInfo, cond Conditional) bool {
 func compareState(last map[string]info.LogInfo, cond Conditional) bool {
 	if len(cond.And) != 0 {
 		for i := range cond.And {
-			if compareState(last, cond.And[i]) == false {
+			if !compareState(last, cond.And[i]) {
 				return false
 			}
 		}
 		return true
 	} else if len(cond.Or) != 0 {
 		for i := range cond.Or {
-			if compareState(last, cond.Or[i]) == true {
+			if compareState(last, cond.Or[i]) {
 				return true
 			}
 		}
 		return false
 	} else if len(cond.Not) != 0 {
 		for i := range cond.Not {
-			if compareState(last, cond.Not[i]) == true {
+			if compareState(last, cond.Not[i]) {
 				return false
 			}
 		}
 		return true
 	} else {
-		if cond.Value.Valid() == false {
+		if !cond.Value.Valid() {
 			return false
 		}
 

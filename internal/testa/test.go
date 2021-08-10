@@ -28,25 +28,25 @@ func (test *Test) Valid(info info.LogInfo) {
 func (test *Test) WriteReport(rootPath string, version string, build string) {
 	var IDGen idgen.IdGenerater
 	var report struct {
-		DateTime         string   `json:DateTime`
-		CheckerVersion   string   `json:CheckerVersion`
-		CheckerBuildDate string   `json:CheckerBuildDate`
-		DetailPath       []string `json:_detail-path`
+		DateTime         string
+		CheckerVersion   string
+		CheckerBuildDate string
+		DetailPath       []string
 	}
 	for _, method := range test.methods {
 		var HistoryIDGen idgen.IdGenerater
 		type subReport_detail struct {
-			Id       string `json:Id`
-			Type     string `json:Type`
-			Message  string `json:Message`
-			FilePath string `json:FilePath`
+			Id       string
+			Type     string
+			Message  string
+			FilePath string
 		}
 		var subReport struct {
-			Name     string             `json:Name`
-			Id       string             `json:Id`
-			DateTime string             `json:DateTime`
-			Done     bool               `json:Done`
-			Detail   []subReport_detail `json:_detail`
+			Name     string
+			Id       string
+			DateTime string
+			Done     bool
+			Detail   []subReport_detail
 		}
 		subReport.Id = IDGen.GenerateID()
 		subReport.Name = method.name
@@ -63,7 +63,7 @@ func (test *Test) WriteReport(rootPath string, version string, build string) {
 			subReport.Detail = append(subReport.Detail, detail)
 
 			var history struct {
-				Id          string `json:Id`
+				Id          string
 				ResultType  string
 				Message     string
 				MaxCount    uint32

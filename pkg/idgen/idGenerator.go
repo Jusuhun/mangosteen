@@ -14,7 +14,7 @@ func (gen *IdGenerater) Clear() {
 }
 
 func (gen *IdGenerater) GenerateID() string {
-	for true {
+	for {
 		math := true
 		hex, _ := randomHex(2)
 		for i := range gen.db {
@@ -29,7 +29,6 @@ func (gen *IdGenerater) GenerateID() string {
 			return hex
 		}
 	}
-	return ""
 }
 
 func randomHex(n int) (string, error) {

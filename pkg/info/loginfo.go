@@ -40,10 +40,10 @@ func (f *LogInfo) Valid() bool {
 }
 
 func (format *LogInfo) Compare(info LogInfo) bool {
-	if format.Valid() == false {
+	if !format.Valid() {
 		return false
 	}
-	if info.Valid() == false {
+	if !info.Valid() {
 		return false
 	}
 	if format.Kind != info.Kind {
