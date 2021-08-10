@@ -1,4 +1,4 @@
-module mangosteen
+module mangosteena
 
 go 1.13
 

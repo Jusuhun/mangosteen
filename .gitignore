@@ -17,4 +17,5 @@
 config/
 config.yaml
 report.yaml
+report*.yaml
 report*/
