@@ -6,6 +6,7 @@ package main
 //[x] Log가 남는 PC에서 실행할 Line 보내주는 프로그램 구현(Server)
 
 import (
+	"container/list"
 	"flag"
 	"fmt"
 	"mangosteena/internal/testa"
@@ -33,15 +34,27 @@ func main() {
 	//ReadFile
 	test := testa.ReadFile(*rootPath + *configFile)
 
-	//CSV 파일 읽어서 하는 걸로  && 통신으로 받는 걸로 변경하면 좋음
-	array := []info.LogInfo{
-		info.DecodeCSV("{time},operation,start-sw,on"),
-		info.DecodeCSV("{time},event,init"),
-		info.DecodeCSV("{time},operation,start-sw,off"),
-	}
+	que := list.New()
+	for true /*!test.done*/ {
+		if que.Len() == 0 {
+			//rest API
+			//buffer
+			//임시
+			que.PushBack(info.DecodeCSV("{time},event,init"))
+			que.PushBack(info.DecodeCSV("{time},operation,start-sw,off"))
+			que.PushBack(info.DecodeCSV("{time},operation,start-sw,on"))
+		}
 
-	for i := range array {
-		test.Valid(array[i])
+		if que.Len() == 0 {
+			//sleep(100)
+		} else {
+			test.Valid(que.Front().Value.(info.LogInfo))
+			que.Remove(que.Front())
+		}
+
+		if true {
+			break
+		}
 	}
 
 	test.WriteReport(*rootPath, VERSION, BUILD)
